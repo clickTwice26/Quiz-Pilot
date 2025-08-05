@@ -22,9 +22,10 @@ public class User {
     private String username;
     
     private String fullname;
-    private String userRole;
+    private String userRole = "student";
     private String sessionToken;
-    
+    @Column(unique = true, nullable = false)
+    private String email_address;
     @Column(nullable = false)
     private String password;
 
