@@ -12,6 +12,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     // Custom query method to find user by username
     Optional<User> findByUsername(String username);
+    Optional<User> findByEmailAddress(String emailAddress);
     
     // You can add more custom query methods here if needed
 }

@@ -18,7 +18,7 @@ public class UserDto {
     private String username;
 
     @Schema(description = "Email address for the user", example = "john@gmail.com", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String email_address;
+    private String emailAddress;
     @Schema(description =   "Full name of the user", example = "John Doe")
     private String fullname;
     @Schema(description = "Role of the user in the system", example = "STUDENT", allowableValues = {"STUDENT", "INSTRUCTOR", "ADMIN"})

@@ -2,8 +2,10 @@ package com.quizpilot.quizpilot.controller;
 
 import com.quizpilot.quizpilot.dto.UserDto;
 import com.quizpilot.quizpilot.dto.UserRegistrationDto;
+import com.quizpilot.quizpilot.dto.LoginDto;
 import com.quizpilot.quizpilot.model.User;
 import com.quizpilot.quizpilot.repository.UserRepository;
+import com.quizpilot.quizpilot.responses.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -13,11 +15,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+
 
 
 @RestController
@@ -28,6 +30,18 @@ public class UserController {
     @Autowired
     private UserRepository userRepository;
 
+
+    private String getAccessToken(int length) {
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder token = new StringBuilder();
+    
+        for (int i = 0; i < length; i++) {
+            int randomIndex = (int) (Math.random() * characters.length());
+            token.append(characters.charAt(randomIndex));
+        }
+    
+        return token.toString();
+    }
     @Operation(summary = "Register a new user", description = "Create a new user account with username, password, and profile information")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "User registered successfully"),
@@ -48,119 +62,75 @@ public class UserController {
         user.setUsername(registrationDto.getUsername());
         user.setPassword(registrationDto.getPassword()); 
         user.setFullname(registrationDto.getFullname());
-        user.setEmail_address(registrationDto.getEmail_address());
+        user.setEmailAddress(registrationDto.getEmailAddress());
         
         User savedUser = userRepository.save(user);
         return ResponseEntity.status(201).body(convertToDto(savedUser));
     }
 
     @Operation(summary = "Login a user", description = "Retrieve user sessionToken by providing correct credentials")
-    @ApiResponse(value={
-        @ApiResponse(responseCode = "401", description = "Login Failure , Invalid credentials")
+    @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Login Successful"),
+        @ApiResponse(responseCode = "401", description = "Login Failure, Invalid credentials"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PostMapping("/login")
-    public String postMethodName(@RequestBody String entity) {
-        //TODO: process POST request
+    public ResponseEntity<LoginResponse> loginUser(
+            @Parameter(description = "User login data", required = true)
+            @RequestBody LoginDto loginCred) {
         
-        return entity;
+        try {
+            Optional<User> userOptional = userRepository.findByEmailAddress(loginCred.getEmailAddress());
+            
+            if (userOptional.isEmpty()) {
+                return ResponseEntity.status(401).body(new LoginResponse("401", "User not found", ""));
+            }
+            
+            User loginUser = userOptional.get();
+            
+            if (loginUser.matchPassword(loginCred.getPassword())) {
+                String sessionToken = "session_" + this.getAccessToken(192);
+                
+                loginUser.setSessionToken(sessionToken);
+                userRepository.save(loginUser);
+                
+                LoginResponse response = new LoginResponse("200", loginUser.getEmailAddress(), sessionToken);
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.status(401).body(new LoginResponse("401", "Invalid credentials", ""));
+            }
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(new LoginResponse("500", "Internal server error", ""));
+        }
     }
-    
-
-
-
-    @Operation(summary = "Get all users", description = "Retrieve a list of all registered users (excluding sensitive information)")
+    @Operation(summary = "Get all available user data", description = "For development purpose you can get all the information of a user")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Users retrieved successfully"),
+        @ApiResponse(responseCode = "200", description = "Login Successful"),
+        @ApiResponse(responseCode = "401", description = "Login Failure, Invalid credentials"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    @GetMapping
-    public ResponseEntity<List<UserDto>> getAllUsers() {
-        List<User> users = userRepository.findAll();
-        List<UserDto> userDtos = users.stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(userDtos);
+    @GetMapping("/all")
+    public ResponseEntity<List<User>> getAllUsers() {
+        try{
+            List<User> users = userRepository.findAll();
+            return ResponseEntity.ok(users);
+        }catch (Exception e){
+            return ResponseEntity.status(500).build();
+
+        }
+
     }
-
-    @Operation(summary = "Get user by ID", description = "Retrieve a specific user by their ID")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "User found and retrieved successfully"),
-        @ApiResponse(responseCode = "404", description = "User not found"),
-        @ApiResponse(responseCode = "400", description = "Invalid user ID")
-    })
-    @GetMapping("/{id}")
-    public ResponseEntity<UserDto> getUserById(
-            @Parameter(description = "ID of the user to retrieve", required = true)
-            @PathVariable Long id) {
-        Optional<User> user = userRepository.findById(id);
-        return user.map(u -> ResponseEntity.ok(convertToDto(u)))
-                  .orElse(ResponseEntity.notFound().build());
-    }
-
-
-
-    @Operation(summary = "Update user profile", description = "Update a user's profile information")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "User updated successfully"),
-        @ApiResponse(responseCode = "404", description = "User not found"),
-        @ApiResponse(responseCode = "400", description = "Invalid user data")
-    })
-    @PutMapping("/{id}")
-    public ResponseEntity<UserDto> updateUser(
-            @Parameter(description = "ID of the user to update", required = true)
-            @PathVariable Long id,
-            @Parameter(description = "Updated user data", required = true)
-            @RequestBody UserDto userDto) {
-        return userRepository.findById(id)
-                .map(user -> {
-                    user.setUsername(userDto.getUsername());
-                    user.setFullname(userDto.getFullname());
-                    user.setUserRole(userDto.getUserRole());
-                    return ResponseEntity.ok(convertToDto(userRepository.save(user)));
-                })
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @Operation(summary = "Delete a user", description = "Delete a user account by ID")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "User deleted successfully"),
-        @ApiResponse(responseCode = "404", description = "User not found")
-    })
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(
-            @Parameter(description = "ID of the user to delete", required = true)
-            @PathVariable Long id) {
-        return userRepository.findById(id)
-                .map(user -> {
-                    userRepository.delete(user);
-                    return ResponseEntity.noContent().<Void>build();
-                })
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @Operation(summary = "Get user by username", description = "Find a user by their username")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "User found"),
-        @ApiResponse(responseCode = "404", description = "User not found")
-    })
-    @GetMapping("/username/{username}")
-    public ResponseEntity<UserDto> getUserByUsername(
-            @Parameter(description = "Username to search for", required = true)
-            @PathVariable String username) {
-        Optional<User> user = userRepository.findByUsername(username);
-        return user.map(u -> ResponseEntity.ok(convertToDto(u)))
-                  .orElse(ResponseEntity.notFound().build());
-    }
-
-    // Helper method to convert User entity to UserDto
+    
     private UserDto convertToDto(User user) {
         UserDto dto = new UserDto();
         dto.setId(user.getId());
         dto.setUsername(user.getUsername());
         dto.setFullname(user.getFullname());
+        dto.setEmailAddress(user.getEmailAddress());
         dto.setUserRole(user.getUserRole());
+        // Don't include password or sessionToken in DTO for security
         return dto;
     }
+
 }

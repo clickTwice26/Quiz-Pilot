@@ -15,7 +15,7 @@ public class UserRegistrationDto {
     private String username;
     
     @Schema(description = "Email address for the new user", example = "john@gmail.com", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String email_address;
+    private String emailAddress;
     
     @Schema(description = "Password for the new user", example = "securePassword123", requiredMode = Schema.RequiredMode.REQUIRED)
     private String password;

@@ -25,7 +25,7 @@ public class User {
     private String userRole = "student";
     private String sessionToken;
     @Column(unique = true, nullable = false)
-    private String email_address;
+    private String emailAddress;
     @Column(nullable = false)
     private String password;
 
