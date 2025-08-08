@@ -8,13 +8,13 @@ import lombok.AllArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "User login credentials")
+@Schema(description = "User login credentials") 
 public class LoginResponse {
     
     @Schema(description = "Status code", example = "200", requiredMode = Schema.RequiredMode.REQUIRED)
     private String statusCode;
 
-    
+
     @Schema(description = "Email address for the user", example = "john@gmail.com", requiredMode = Schema.RequiredMode.REQUIRED)
     private String email_address;
     

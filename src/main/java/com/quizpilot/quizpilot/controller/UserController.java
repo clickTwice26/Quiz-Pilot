@@ -129,7 +129,6 @@ public class UserController {
         dto.setFullname(user.getFullname());
         dto.setEmailAddress(user.getEmailAddress());
         dto.setUserRole(user.getUserRole());
-        // Don't include password or sessionToken in DTO for security
         return dto;
     }
 
